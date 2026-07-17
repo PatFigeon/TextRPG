@@ -1,10 +1,5 @@
 #include <iostream>
-#include <chrono>
 #include <random>
-#include <thread>
-#include <cmath>
-#include <stdexcept>
-#include <string>
 
 using namespace std;
 
@@ -133,14 +128,14 @@ class hero: public actionableEntity
 class boss: public actionableEntity
 {
     private:
-        //checkForDeath bossDeath;
+        checkForDeath bossDeath;
     public:
         int hitpoints = 3000;
         int mana = 999;
 
         bool bossRegularAction()
         {
-            //if (bossDeath.deathCheck(hitpoints, isDead) != true);
+            if (bossDeath.deathCheck(hitpoints, isDead) != true);
             {
 
             }
