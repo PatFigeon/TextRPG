@@ -26,11 +26,11 @@ class hitLogic
             int randomNum = distrib(gen);
             return randomNum;
         }
-        double attackVariance()
+        float attackVariance()
         {
-            uniform_int_distribution<int> distrib(80, 120);
-            float generatedValue = distrib(gen);
-            float attackVariance = generatedValue/100;
+            uniform_real_distribution<float> distrib(0.8f, 1.2f);
+            float attackVariance = distrib(gen);
+            //float attackVariance = generatedValue/100;
             return attackVariance;
         }
     public:
