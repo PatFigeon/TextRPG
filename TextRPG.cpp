@@ -26,6 +26,13 @@ class hitLogic
             int randomNum = distrib(gen);
             return randomNum;
         }
+        double attackVariance()
+        {
+            uniform_int_distribution<int> distrib(80, 120);
+            float generatedValue = distrib(gen);
+            float attackVariance = generatedValue/100;
+            return attackVariance;
+        }
     public:
         hitLogic()
         {
@@ -38,6 +45,10 @@ class hitLogic
             {
                 return true;
             }
+            else
+            {
+                return false;
+            }
         }
         bool isAttackCritical(const int& criticalRate)
         {
@@ -45,12 +56,34 @@ class hitLogic
             {
                 return true;
             }
+            else
+            {
+                return false;
+            }          
+        }
+        int damageFormula(const int& power, const bool& isCritical, const int& level)
+        {
+            int damageMult;
+            int damage;
+
+            if (isCritical == true)
+            {
+                damageMult = 2;
+            }
+            else
+            {
+                damageMult = 1;
+            }
+
+            damage = (power * level/5) * attackVariance() * damageMult;
+            return damage;
         }
 };
 
 class actionableEntity
 {
     public:
+        int level;
         int hitpoints;
         int mana;
         bool isPoisoned = false;
@@ -79,7 +112,7 @@ class heroMoveList
             }
         }
         
-        void actionLogic(moveset action)
+        void actionLogic(moveset action, int heroLevel)
         {
             switch(action)
             {
@@ -87,19 +120,17 @@ class heroMoveList
                     int moveParameters[3] = {30, 95, 2}; // {power, accuracy, criticalRate}
                     if (logic.hasAttackHit(moveParameters[1]) == true)
                     {
-                        cout << "Attack has hit" << endl;
-                        if (logic.isAttackCritical(moveParameters[2]) == true)
+                        bool isCritical = logic.isAttackCritical(moveParameters[2]);
+                        int damage = logic.damageFormula(moveParameters[0], isCritical, heroLevel);
+                        if (isCritical == true)
                         {
-                            cout << "Attack is critical" << endl;
+                            cout << "A critical hit!" << endl;
                         }
-                        else
-                        {
-                            cout << "No crit" << endl;
-                        }
+                        cout << "The attack hit for " << damage << endl;
                     }
                     else
                     {
-                        cout << "Attack has missed, skipping crit check" << endl;
+                        cout << "Attack has missed" << endl;
                     }
             }
         }       
@@ -110,18 +141,29 @@ class hero: public actionableEntity
     private:
         checkForDeath heroDeath;
         heroMoveList hMove;
+        actionableEntity heroEntity;
     public:
+        int heroLevel = 50;
         int hitpoints = 500;
         int mana = 500;
 
+        bool checkPlayerDeath()
+        {
+            if (heroDeath.deathCheck(hitpoints, heroEntity.isDead) != true)
+            {
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        }
+        
         void playerRegularAction()
         {
-            if (heroDeath.deathCheck(hitpoints, isDead) != true)
-            {
-                cout << "Choose from the following:\na to attack\nb to block\nh to heal" << endl;
-                heroMoveList::moveset action = hMove.selectAction();
-                hMove.actionLogic(action);    
-            }
+            cout << "Choose from the following:\na to attack\nb to block\nh to heal" << endl;
+            heroMoveList::moveset action = hMove.selectAction();
+            hMove.actionLogic(action, heroLevel); 
         }
 };
 
@@ -130,27 +172,51 @@ class boss: public actionableEntity
     private:
         checkForDeath bossDeath;
     public:
+        int bossLevel = 55;
         int hitpoints = 3000;
         int mana = 999;
 
-        bool bossRegularAction()
+        bool checkBossDeath()
         {
-            if (bossDeath.deathCheck(hitpoints, isDead) != true);
+            if (bossDeath.deathCheck(hitpoints, isDead) != true)
             {
-
+                return false;
             }
+            else
+            {
+                return true;
+            }
+        }
+
+        void bossRegularAction()
+        {
 
         }
 };
 
 class turnController
 {
-
+    private:
+        hero hero;
+        boss boss;
+        checkForDeath bossDeath;
+        checkForDeath heroDeath;
+    public:
+        void turnOrder()
+        {
+            while (hero.checkPlayerDeath() != true && boss.checkBossDeath() != true)
+            {
+                cout << "Player death check passed" << endl;
+                hero.playerRegularAction();
+                cout << "Boss death check passed" << endl;
+                boss.bossRegularAction();            
+            }
+        }
 };
 
 int main()
 {
-    hero hero;
-    hero.playerRegularAction();
+    turnController turn;
+    turn.turnOrder();
     return 0;
 }
