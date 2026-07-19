@@ -110,7 +110,7 @@ class moveLogic
 class heroMoveList: public moveLogic
 {
     public:
-        enum class moveset {ATTACK, HEAL, BLOCK};
+        enum class moveset {ATTACK, HEAL, BLOCK, GIVEUP};
 
         int power;
         int accuracy;
@@ -141,6 +141,8 @@ class heroMoveList: public moveLogic
                         manaCost = 50;
                         moveParameters = {power, accuracy, criticalRate, manaCost};
                         return moveset::HEAL;
+                    case 'g':
+                        return moveset::GIVEUP;
                     default:
                         cout << "I'm still working on that move buster" << endl;
                 }
@@ -176,6 +178,9 @@ class heroMoveList: public moveLogic
                     cout << "Healed for " << healing << " health" << endl;
                     cout << "Hero health is now " << currentHitpoints << " health" << endl;
                     return moveParameters.at(3);
+                case moveset::GIVEUP:
+                    currentHitpoints = 0;
+                    break;
                 case moveset::BLOCK:
                     return 0;
             }
@@ -216,7 +221,7 @@ class hero
         
         void playerRegularAction()
         {
-            cout << "Choose from the following:\na to attack\nb to block\nh to heal" << endl;
+            cout << "Choose from the following:\na to attack\nb to block\nh to heal\ng to give up (quit)" << endl;
             heroMoveList::moveset action = heroMove.selectAction();
             int manaCost = heroMove.actionLogic(action, heroLevel, maxHitpoints, currentHitpoints);
             mana = heroMove.updateMana(mana, manaCost);
@@ -264,32 +269,36 @@ class turnController
                 cout << hero.heroName << "'s turn" << endl;
                 hero.playerRegularAction();
                 //cout << "Boss death check passed" << endl;
-                cout << "Enemy turn" << endl;
-                boss.bossRegularAction();            
+                if (hero.checkPlayerDeath() != true)
+                {
+                    cout << "Enemy turn" << endl;
+                    boss.bossRegularAction();
+                }        
             }
         }
 };
 
 class gameSetup
 {
+    private:
+        turnController turn;
+        boss boss;
+        hero hero;
     public:
-        void setupGame(hero& hero)
+        void setupGame()
         {
             cout << "Welcome to the grand adventure of TextRPG!" << endl;
             cout << "Please enter your hero's name: ";
             string inputName;
             cin >> inputName;
             hero.setHeroName(inputName);
+            turn.turnOrder(hero, boss);
         }
 };
 
 int main()
 {
-    turnController turn;
     gameSetup setup;
-    hero hero;
-    boss boss;
-    setup.setupGame(hero);
-    turn.turnOrder(hero, boss);
+    setup.setupGame();
     return 0;
 }
