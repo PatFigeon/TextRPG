@@ -180,7 +180,7 @@ class heroMoveList: public moveLogic
                     return moveParameters.at(3);
                 case moveset::GIVEUP:
                     currentHitpoints = 0;
-                    break;
+                    return 0;
                 case moveset::BLOCK:
                     return 0;
             }
