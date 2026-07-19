@@ -18,19 +18,6 @@ class checkForDeath
         } 
 };
 
-class actionableEntity
-{
-    public:
-        int Level;
-        int maxHitpoints;
-        int damageTaken;
-        int currentHitpoints = maxHitpoints;
-        int healingDone;
-        int mana;
-        bool isDead = false;
-
-};
-
 class moveLogic
 {
     private:
