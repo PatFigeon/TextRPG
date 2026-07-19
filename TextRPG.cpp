@@ -1,5 +1,6 @@
 #include <iostream>
 #include <random>
+#include <vector>
 
 using namespace std;
 
@@ -28,9 +29,8 @@ class hitLogic
         }
         float attackVariance()
         {
-            uniform_real_distribution<float> distrib(0.8f, 1.2f);
+            uniform_real_distribution<float> distrib(0.9f, 1.1f);
             float attackVariance = distrib(gen);
-            //float attackVariance = generatedValue/100;
             return attackVariance;
         }
     public:
@@ -78,17 +78,11 @@ class hitLogic
             damage = (power * level/5) * attackVariance() * damageMult;
             return damage;
         }
-};
-
-class actionableEntity
-{
-    public:
-        int level;
-        int hitpoints;
-        int mana;
-        bool isPoisoned = false;
-        bool isBlocking = false;
-        bool isDead = false;
+        int healingFormula(const int& power, const int& level)
+        {
+            int healing = (power * level/10) * attackVariance();
+            return healing;
+        }
 };
 
 class heroMoveList
@@ -98,58 +92,115 @@ class heroMoveList
     public:
         enum class moveset {ATTACK, HEAL, BLOCK};
 
+        int power;
+        int accuracy;
+        int criticalRate;
+        int manaCost;
+        vector<int> moveParameters;
+
         moveset selectAction()
         {
             char action;
-            cin >> action;
-            action = tolower(action);
-            switch(action)
+            while (true)
             {
-                case 'a':
-                    return moveset::ATTACK;
-                default:
-                    cout << "I'm still working on that move buster" << endl;
-            }
+                cin >> action;
+                action = tolower(action);
+                switch(action)
+                {
+                    case 'a':
+                        power = 30;
+                        accuracy = 95;
+                        criticalRate = 2;
+                        manaCost = 3;
+                        moveParameters = {power, accuracy, criticalRate, manaCost};
+                        return moveset::ATTACK;
+                    case 'h':
+                        power = 20;
+                        accuracy = 100;
+                        criticalRate = 0;
+                        manaCost = 50;
+                        moveParameters = {power, accuracy, criticalRate, manaCost};
+                        return moveset::HEAL;
+                    default:
+                        cout << "I'm still working on that move buster" << endl;
+                }
+            }         
         }
+
+        int damage;
+        int healing;
         
-        void actionLogic(moveset action, int heroLevel)
+        int actionLogic(const moveset& action, const int& heroLevel, const int& maxHitpoints, int& currentHitpoints)
         {
+            damage = 0;
+            healing = 0;
             switch(action)
             {
                 case moveset::ATTACK:
-                    int moveParameters[3] = {30, 95, 2}; // {power, accuracy, criticalRate}
-                    if (logic.hasAttackHit(moveParameters[1]) == true)
+                    if (logic.hasAttackHit(moveParameters.at(1)) == true)
                     {
-                        bool isCritical = logic.isAttackCritical(moveParameters[2]);
-                        int damage = logic.damageFormula(moveParameters[0], isCritical, heroLevel);
+                        bool isCritical = logic.isAttackCritical(moveParameters.at(2));
+                        damage = logic.damageFormula(moveParameters.at(0), isCritical, heroLevel);
                         if (isCritical == true)
                         {
                             cout << "A critical hit!" << endl;
                         }
-                        cout << "The attack hit for " << damage << endl;
+                        cout << "The attack hit for " << damage << " damage" << endl;
                     }
                     else
                     {
                         cout << "Attack has missed" << endl;
                     }
+                    return moveParameters.at(3);
+                case moveset::HEAL:
+                    healing = logic.healingFormula(moveParameters.at(0), heroLevel);
+                    currentHitpoints = updateHealthpoints(healing, maxHitpoints, currentHitpoints);
+                    cout << "Healed for " << healing << " health" << endl;
+                    cout << "Hero health is now " << currentHitpoints << " health" << endl;
+                    return moveParameters.at(3);
+                case moveset::BLOCK:
+                    return 0;
             }
-        }       
+        }
+
+        int updateMana(int& currentMana, const int& manaCost)
+        {
+            int newMana = currentMana - manaCost;
+            return newMana;
+        }
+
+        int updateHealthpoints(const int& healing, const int& maxHitpoints, int& currentHitpoints)
+        {
+            int newHitpoints;
+            if (currentHitpoints + healing > maxHitpoints)
+            {
+                return maxHitpoints;
+            }
+            else
+            {
+                newHitpoints = currentHitpoints + healing;
+                return newHitpoints;
+            }
+        }
 };
 
-class hero: public actionableEntity
+class hero
 {
     private:
         checkForDeath heroDeath;
         heroMoveList hMove;
-        actionableEntity heroEntity;
     public:
         int heroLevel = 50;
-        int hitpoints = 500;
+        int maxHitpoints = 500;
+        int damageTaken;
+        int currentHitpoints = 300;
+        int healingDone;
         int mana = 500;
+        bool isDead = false;
 
         bool checkPlayerDeath()
         {
-            if (heroDeath.deathCheck(hitpoints, heroEntity.isDead) != true)
+            if (heroDeath.deathCheck(currentHitpoints, isDead) != true)
             {
                 return false;
             }
@@ -163,22 +214,28 @@ class hero: public actionableEntity
         {
             cout << "Choose from the following:\na to attack\nb to block\nh to heal" << endl;
             heroMoveList::moveset action = hMove.selectAction();
-            hMove.actionLogic(action, heroLevel); 
+            int manaCost = hMove.actionLogic(action, heroLevel, maxHitpoints, currentHitpoints);
+            mana = hMove.updateMana(mana, manaCost);
+            currentHitpoints = currentHitpoints + hMove.healing;
+            cout << currentHitpoints << endl;
         }
 };
 
-class boss: public actionableEntity
+class boss
 {
     private:
         checkForDeath bossDeath;
     public:
         int bossLevel = 55;
-        int hitpoints = 3000;
+        int maxHitpoints = 3000;
+        int damageTaken;
+        int currentHitpoints = maxHitpoints;
         int mana = 999;
+        bool isDead = false;
 
         bool checkBossDeath()
         {
-            if (bossDeath.deathCheck(hitpoints, isDead) != true)
+            if (bossDeath.deathCheck(currentHitpoints, isDead) != true)
             {
                 return false;
             }
@@ -206,9 +263,10 @@ class turnController
         {
             while (hero.checkPlayerDeath() != true && boss.checkBossDeath() != true)
             {
-                cout << "Player death check passed" << endl;
+                //cout << "Player death check passed" << endl;
                 hero.playerRegularAction();
-                cout << "Boss death check passed" << endl;
+
+                //cout << "Boss death check passed" << endl;
                 boss.bossRegularAction();            
             }
         }
