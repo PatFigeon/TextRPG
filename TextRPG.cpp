@@ -1,6 +1,7 @@
 #include <iostream>
 #include <random>
 #include <vector>
+#include <string>
 
 using namespace std;
 
@@ -17,7 +18,20 @@ class checkForDeath
         } 
 };
 
-class hitLogic
+class actionableEntity
+{
+    public:
+        int Level;
+        int maxHitpoints;
+        int damageTaken;
+        int currentHitpoints = maxHitpoints;
+        int healingDone;
+        int mana;
+        bool isDead = false;
+
+};
+
+class moveLogic
 {
     private:
         mt19937 gen;
@@ -34,7 +48,7 @@ class hitLogic
             return attackVariance;
         }
     public:
-        hitLogic()
+        moveLogic()
         {
             random_device rd;
             gen = mt19937(rd());
@@ -78,17 +92,36 @@ class hitLogic
             damage = (power * level/5) * attackVariance() * damageMult;
             return damage;
         }
+
         int healingFormula(const int& power, const int& level)
         {
             int healing = (power * level/10) * attackVariance();
             return healing;
         }
+
+        int updateMana(int& currentMana, const int& manaCost)
+        {
+            int newMana = currentMana - manaCost;
+            return newMana;
+        }
+
+        int updateHealthpoints(const int& healing, const int& maxHitpoints, int& currentHitpoints)
+        {
+            int newHitpoints;
+            if (currentHitpoints + healing > maxHitpoints)
+            {
+                return maxHitpoints;
+            }
+            else
+            {
+                newHitpoints = currentHitpoints + healing;
+                return newHitpoints;
+            }
+        }
 };
 
-class heroMoveList
+class heroMoveList: public moveLogic
 {
-    private:
-        hitLogic logic;
     public:
         enum class moveset {ATTACK, HEAL, BLOCK};
 
@@ -132,15 +165,13 @@ class heroMoveList
         
         int actionLogic(const moveset& action, const int& heroLevel, const int& maxHitpoints, int& currentHitpoints)
         {
-            damage = 0;
-            healing = 0;
             switch(action)
             {
                 case moveset::ATTACK:
-                    if (logic.hasAttackHit(moveParameters.at(1)) == true)
+                    if (hasAttackHit(moveParameters.at(1)) == true)
                     {
-                        bool isCritical = logic.isAttackCritical(moveParameters.at(2));
-                        damage = logic.damageFormula(moveParameters.at(0), isCritical, heroLevel);
+                        bool isCritical = isAttackCritical(moveParameters.at(2));
+                        damage = damageFormula(moveParameters.at(0), isCritical, heroLevel);
                         if (isCritical == true)
                         {
                             cout << "A critical hit!" << endl;
@@ -153,7 +184,7 @@ class heroMoveList
                     }
                     return moveParameters.at(3);
                 case moveset::HEAL:
-                    healing = logic.healingFormula(moveParameters.at(0), heroLevel);
+                    healing = healingFormula(moveParameters.at(0), heroLevel);
                     currentHitpoints = updateHealthpoints(healing, maxHitpoints, currentHitpoints);
                     cout << "Healed for " << healing << " health" << endl;
                     cout << "Hero health is now " << currentHitpoints << " health" << endl;
@@ -162,41 +193,27 @@ class heroMoveList
                     return 0;
             }
         }
-
-        int updateMana(int& currentMana, const int& manaCost)
-        {
-            int newMana = currentMana - manaCost;
-            return newMana;
-        }
-
-        int updateHealthpoints(const int& healing, const int& maxHitpoints, int& currentHitpoints)
-        {
-            int newHitpoints;
-            if (currentHitpoints + healing > maxHitpoints)
-            {
-                return maxHitpoints;
-            }
-            else
-            {
-                newHitpoints = currentHitpoints + healing;
-                return newHitpoints;
-            }
-        }
 };
 
 class hero
 {
     private:
         checkForDeath heroDeath;
-        heroMoveList hMove;
+        heroMoveList heroMove;
     public:
+        string heroName;
         int heroLevel = 50;
         int maxHitpoints = 500;
         int damageTaken;
-        int currentHitpoints = 300;
+        int currentHitpoints = 300; //lowered for heal command test
         int healingDone;
         int mana = 500;
         bool isDead = false;
+
+        void setHeroName(string newName)
+        {
+            heroName = newName;
+        }
 
         bool checkPlayerDeath()
         {
@@ -213,11 +230,9 @@ class hero
         void playerRegularAction()
         {
             cout << "Choose from the following:\na to attack\nb to block\nh to heal" << endl;
-            heroMoveList::moveset action = hMove.selectAction();
-            int manaCost = hMove.actionLogic(action, heroLevel, maxHitpoints, currentHitpoints);
-            mana = hMove.updateMana(mana, manaCost);
-            currentHitpoints = currentHitpoints + hMove.healing;
-            cout << currentHitpoints << endl;
+            heroMoveList::moveset action = heroMove.selectAction();
+            int manaCost = heroMove.actionLogic(action, heroLevel, maxHitpoints, currentHitpoints);
+            mana = heroMove.updateMana(mana, manaCost);
         }
 };
 
@@ -253,28 +268,41 @@ class boss
 
 class turnController
 {
-    private:
-        hero hero;
-        boss boss;
-        checkForDeath bossDeath;
-        checkForDeath heroDeath;
     public:
-        void turnOrder()
+        void turnOrder(hero& hero, boss& boss)
         {
             while (hero.checkPlayerDeath() != true && boss.checkBossDeath() != true)
             {
                 //cout << "Player death check passed" << endl;
+                cout << hero.heroName << "'s turn" << endl;
                 hero.playerRegularAction();
-
                 //cout << "Boss death check passed" << endl;
+                cout << "Enemy turn" << endl;
                 boss.bossRegularAction();            
             }
+        }
+};
+
+class gameSetup
+{
+    public:
+        void setupGame(hero& hero)
+        {
+            cout << "Welcome to the grand adventure of TextRPG!" << endl;
+            cout << "Please enter your hero's name: ";
+            string inputName;
+            cin >> inputName;
+            hero.setHeroName(inputName);
         }
 };
 
 int main()
 {
     turnController turn;
-    turn.turnOrder();
+    gameSetup setup;
+    hero hero;
+    boss boss;
+    setup.setupGame(hero);
+    turn.turnOrder(hero, boss);
     return 0;
 }
