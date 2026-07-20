@@ -5,6 +5,96 @@
 
 using namespace std;
 
+// ==========================================
+// LOOT SYSTEM (dont worry ill totally refactor this into its own file later)
+// ==========================================
+
+// Nunmeral uno; what is rarity? (enum class)
+enum class Rarity { COMMON, UNCOMMON, RARE, LEGENDARY };
+
+struct Item 
+{
+    string name;
+    Rarity rarity;
+};
+
+// Nurmeral dos; what is a loot table? (not a mlp character)
+class LootTable 
+{
+    private:
+        mt19937 gen;
+        vector<pair<Item, int>> tableItems; // learning opportunity : what does this do?
+    public:
+        LootTable() 
+        {
+            random_device rd;
+            gen = mt19937(rd());
+            
+            // populate: verb (i think); to reproduce the loot tables children 
+            tableItems.push_back({{"A piece of lint", Rarity::COMMON}, 50});
+            tableItems.push_back({{"Minor Health Potion", Rarity::UNCOMMON}, 30});
+            tableItems.push_back({{"Shiny Armor", Rarity::RARE}, 15});
+            tableItems.push_back({{"Divine Blessing", Rarity::LEGENDARY}, 5});
+        }
+
+        Item rollItem() // learning opportunity: what does this do?
+        {
+            int totalWeight = 0;
+            for (size_t i = 0; i < tableItems.size(); i++) 
+            {
+                totalWeight += tableItems.at(i).second;
+            }
+
+            uniform_int_distribution<int> distrib(1, totalWeight);
+            int randomNum = distrib(gen);
+
+            int currentWeight = 0;
+            for (size_t i = 0; i < tableItems.size(); i++) 
+            {
+                currentWeight += tableItems.at(i).second;
+                if (randomNum <= currentWeight) 
+                {
+                    return tableItems.at(i).first;
+                }
+            }
+            return tableItems.at(0).first; // Fallback
+        }
+};
+
+//therdoous neuromos: loot box factory and loot box class; what is a loot box? (not a pokemon)
+class LootBox 
+{
+    public:
+        string tierName;
+        int rollCount;
+};
+
+class LootBoxFactory 
+{
+    public:
+        LootBox buildsBox(const int& bossLevel) 
+        {
+            LootBox box;
+            // Picks tier by boss level because hardcoded is easier in the now and we dont care about the later
+            if (bossLevel < 20) 
+            {
+                box.tierName = "Bronze";
+                box.rollCount = 1;
+            } 
+            else if (bossLevel < 50) 
+            {
+                box.tierName = "Silver";
+                box.rollCount = 2;
+            } 
+            else 
+            {
+                box.tierName = "Gold";
+                box.rollCount = 3;
+            }
+            return box;
+        }
+};
+
 class checkForDeath
 {
     public:
@@ -197,10 +287,12 @@ class hero
         int heroLevel = 50;
         int maxHitpoints = 500;
         int damageTaken;
-        int currentHitpoints = 300; //lowered for heal command test
+        int currentHitpoints = 300; 
         int healingDone;
         int mana = 500;
         bool isDead = false;
+        
+        vector<Item> inventory; // learning opportunity: what does this do?
 
         void setHeroName(string newName)
         {
@@ -225,6 +317,16 @@ class hero
             heroMoveList::moveset action = heroMove.selectAction();
             int manaCost = heroMove.actionLogic(action, heroLevel, maxHitpoints, currentHitpoints);
             mana = heroMove.updateMana(mana, manaCost);
+        }
+
+        // neurmors forous: hero receives items; what does this do?
+        void receiveItems(const vector<Item>& items)
+        {
+            for (const Item& item : items) 
+            {
+                inventory.push_back(item);
+                cout << heroName << " received: " << item.name << "!" << endl;
+            }
         }
 };
 
@@ -263,17 +365,39 @@ class turnController
     public:
         void turnOrder(hero& hero, boss& boss)
         {
+            // Combat loop (Existing classes)
             while (hero.checkPlayerDeath() != true && boss.checkBossDeath() != true)
             {
-                //cout << "Player death check passed" << endl;
                 cout << hero.heroName << "'s turn" << endl;
                 hero.playerRegularAction();
-                //cout << "Boss death check passed" << endl;
                 if (hero.checkPlayerDeath() != true)
                 {
                     cout << "Enemy turn" << endl;
                     boss.bossRegularAction();
                 }        
+            }
+
+            // back in the day we called this a hooker 
+            if (boss.checkBossDeath() == true) 
+            {
+                cout << "\nBoss Defeated!" << endl;
+                
+                LootBoxFactory boxFactory;
+                LootBox droppedBox = boxFactory.buildsBox(boss.bossLevel);
+                
+                cout << "You found a " << droppedBox.tierName << " loot box!" << endl;
+                
+                LootTable lootTable;
+                vector<Item> droppedItems;
+                
+                // roll to win
+                for (int i = 0; i < droppedBox.rollCount; i++) 
+                {
+                    droppedItems.push_back(lootTable.rollItem());
+                }
+
+                // gib the heerow da booties
+                hero.receiveItems(droppedItems);
             }
         }
 };
