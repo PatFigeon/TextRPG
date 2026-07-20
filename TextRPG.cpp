@@ -6,10 +6,10 @@
 using namespace std;
 
 // ==========================================
-// LOOT SYSTEM (From Flowcharts)
+// LOOT SYSTEM (dont worry ill totally refactor this into its own file later)
 // ==========================================
 
-// 1. Define Item & Rarity (plain data, no logic)
+// Nunmeral uno; what is rarity? (enum class)
 enum class Rarity { COMMON, UNCOMMON, RARE, LEGENDARY };
 
 struct Item 
@@ -18,26 +18,26 @@ struct Item
     Rarity rarity;
 };
 
-// 2. Build LootTable (weighted roll logic)
+// Nurmeral dos; what is a loot table? (not a mlp character)
 class LootTable 
 {
     private:
         mt19937 gen;
-        vector<pair<Item, int>> tableItems; // Pairs an Item with its drop weight
+        vector<pair<Item, int>> tableItems; // learning opportunity : what does this do?
     public:
         LootTable() 
         {
             random_device rd;
             gen = mt19937(rd());
             
-            // Populating the table with items and their weighted chances
+            // populate: verb (i think); to reproduce the loot tables children 
             tableItems.push_back({{"A piece of lint", Rarity::COMMON}, 50});
             tableItems.push_back({{"Minor Health Potion", Rarity::UNCOMMON}, 30});
             tableItems.push_back({{"Shiny Armor", Rarity::RARE}, 15});
             tableItems.push_back({{"Divine Blessing", Rarity::LEGENDARY}, 5});
         }
 
-        Item rollItem() 
+        Item rollItem() // learning opportunity: what does this do?
         {
             int totalWeight = 0;
             for (size_t i = 0; i < tableItems.size(); i++) 
@@ -61,7 +61,7 @@ class LootTable
         }
 };
 
-// 3. Build LootBox + Factory (tiers & roll counts)
+//therdoous neuromos: loot box factory and loot box class; what is a loot box? (not a pokemon)
 class LootBox 
 {
     public:
@@ -75,7 +75,7 @@ class LootBoxFactory
         LootBox buildsBox(const int& bossLevel) 
         {
             LootBox box;
-            // Picks tier by boss level
+            // Picks tier by boss level because hardcoded is easier in the now and we dont care about the later
             if (bossLevel < 20) 
             {
                 box.tierName = "Bronze";
@@ -94,10 +94,6 @@ class LootBoxFactory
             return box;
         }
 };
-
-// ==========================================
-// EXISTING COMBAT LOOP CLASSES
-// ==========================================
 
 class checkForDeath
 {
@@ -296,7 +292,7 @@ class hero
         int mana = 500;
         bool isDead = false;
         
-        vector<Item> inventory; // Added for the new loot system
+        vector<Item> inventory; // learning opportunity: what does this do?
 
         void setHeroName(string newName)
         {
@@ -323,7 +319,7 @@ class hero
             mana = heroMove.updateMana(mana, manaCost);
         }
 
-        // 4. Hero receives items and adds to inventory
+        // neurmors forous: hero receives items; what does this do?
         void receiveItems(const vector<Item>& items)
         {
             for (const Item& item : items) 
@@ -381,8 +377,7 @@ class turnController
                 }        
             }
 
-            // 4. Wire into boss defeat
-            // Boss defeated -> checkBossDeath() returns true
+            // back in the day we called this a hooker 
             if (boss.checkBossDeath() == true) 
             {
                 cout << "\nBoss Defeated!" << endl;
@@ -395,13 +390,13 @@ class turnController
                 LootTable lootTable;
                 vector<Item> droppedItems;
                 
-                // Roll items based on the box's rollCount
+                // roll to win
                 for (int i = 0; i < droppedBox.rollCount; i++) 
                 {
                     droppedItems.push_back(lootTable.rollItem());
                 }
 
-                // Hero receives items
+                // gib the heerow da booties
                 hero.receiveItems(droppedItems);
             }
         }
