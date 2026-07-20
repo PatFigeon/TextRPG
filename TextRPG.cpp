@@ -105,12 +105,36 @@ class moveLogic
                 return newHitpoints;
             }
         }
+
+        // LOOTBOX SYSTEM
+        string rollLootBox(int& currentHitpoints, const int& maxHitpoints)
+        {
+            int roll = randomNumGen();
+            if (roll <= 40)
+            {
+                return "COMMON DROP: A piece of lint. (Nothing happened)";
+            }
+            else if (roll <= 70)
+            {
+                currentHitpoints = updateHealthpoints(40, maxHitpoints, currentHitpoints);
+                return "UNCOMMON DROP: Minor Health Potion! Restored 40 HP.";
+            }
+            else if (roll <= 95)
+            {
+                return "RARE DROP: Shiny Armor! (Looks cool, does nothing)";
+            }
+            else
+            {
+                currentHitpoints = maxHitpoints;
+                return "LEGENDARY DROP: Divine Blessing! Fully restored HP!";
+            }
+        }
 };
 
 class heroMoveList: public moveLogic
 {
     public:
-        enum class moveset {ATTACK, HEAL, BLOCK, GIVEUP};
+        enum class moveset {ATTACK, HEAL, BLOCK, GIVEUP, LOOTBOX};
 
         int power;
         int accuracy;
@@ -141,6 +165,13 @@ class heroMoveList: public moveLogic
                         manaCost = 50;
                         moveParameters = {power, accuracy, criticalRate, manaCost};
                         return moveset::HEAL;
+                    case 'l':
+                        power = 0;
+                        accuracy = 100;
+                        criticalRate = 0;
+                        manaCost = 10;
+                        moveParameters = {power, accuracy, criticalRate, manaCost};
+                        return moveset::LOOTBOX;
                     case 'g':
                         return moveset::GIVEUP;
                     default:
@@ -176,6 +207,11 @@ class heroMoveList: public moveLogic
                     healing = healingFormula(moveParameters.at(0), heroLevel);
                     currentHitpoints = updateHealthpoints(healing, maxHitpoints, currentHitpoints);
                     cout << "Healed for " << healing << " health" << endl;
+                    cout << "Hero health is now " << currentHitpoints << " health" << endl;
+                    return moveParameters.at(3);
+                case moveset::LOOTBOX:
+                    cout << "Opening a Surprise Mechanics Loot Box..." << endl;
+                    cout << rollLootBox(currentHitpoints, maxHitpoints) << endl;
                     cout << "Hero health is now " << currentHitpoints << " health" << endl;
                     return moveParameters.at(3);
                 case moveset::GIVEUP:
@@ -221,10 +257,11 @@ class hero
         
         void playerRegularAction()
         {
-            cout << "Choose from the following:\na to attack\nb to block\nh to heal\ng to give up (quit)" << endl;
+            cout << "Choose from the following:\na to attack\nb to block\nh to heal\nl to open loot box\ng to give up (quit)" << endl;
             heroMoveList::moveset action = heroMove.selectAction();
             int manaCost = heroMove.actionLogic(action, heroLevel, maxHitpoints, currentHitpoints);
             mana = heroMove.updateMana(mana, manaCost);
+            cout << "Hero mana is now " << mana << endl;
         }
 };
 
