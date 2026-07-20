@@ -5,6 +5,100 @@
 
 using namespace std;
 
+// ==========================================
+// LOOT SYSTEM (From Flowcharts)
+// ==========================================
+
+// 1. Define Item & Rarity (plain data, no logic)
+enum class Rarity { COMMON, UNCOMMON, RARE, LEGENDARY };
+
+struct Item 
+{
+    string name;
+    Rarity rarity;
+};
+
+// 2. Build LootTable (weighted roll logic)
+class LootTable 
+{
+    private:
+        mt19937 gen;
+        vector<pair<Item, int>> tableItems; // Pairs an Item with its drop weight
+    public:
+        LootTable() 
+        {
+            random_device rd;
+            gen = mt19937(rd());
+            
+            // Populating the table with items and their weighted chances
+            tableItems.push_back({{"A piece of lint", Rarity::COMMON}, 50});
+            tableItems.push_back({{"Minor Health Potion", Rarity::UNCOMMON}, 30});
+            tableItems.push_back({{"Shiny Armor", Rarity::RARE}, 15});
+            tableItems.push_back({{"Divine Blessing", Rarity::LEGENDARY}, 5});
+        }
+
+        Item rollItem() 
+        {
+            int totalWeight = 0;
+            for (size_t i = 0; i < tableItems.size(); i++) 
+            {
+                totalWeight += tableItems.at(i).second;
+            }
+
+            uniform_int_distribution<int> distrib(1, totalWeight);
+            int randomNum = distrib(gen);
+
+            int currentWeight = 0;
+            for (size_t i = 0; i < tableItems.size(); i++) 
+            {
+                currentWeight += tableItems.at(i).second;
+                if (randomNum <= currentWeight) 
+                {
+                    return tableItems.at(i).first;
+                }
+            }
+            return tableItems.at(0).first; // Fallback
+        }
+};
+
+// 3. Build LootBox + Factory (tiers & roll counts)
+class LootBox 
+{
+    public:
+        string tierName;
+        int rollCount;
+};
+
+class LootBoxFactory 
+{
+    public:
+        LootBox buildsBox(const int& bossLevel) 
+        {
+            LootBox box;
+            // Picks tier by boss level
+            if (bossLevel < 20) 
+            {
+                box.tierName = "Bronze";
+                box.rollCount = 1;
+            } 
+            else if (bossLevel < 50) 
+            {
+                box.tierName = "Silver";
+                box.rollCount = 2;
+            } 
+            else 
+            {
+                box.tierName = "Gold";
+                box.rollCount = 3;
+            }
+            return box;
+        }
+};
+
+// ==========================================
+// EXISTING COMBAT LOOP CLASSES
+// ==========================================
+
 class checkForDeath
 {
     public:
@@ -105,36 +199,12 @@ class moveLogic
                 return newHitpoints;
             }
         }
-
-        // LOOTBOX SYSTEM
-        string rollLootBox(int& currentHitpoints, const int& maxHitpoints)
-        {
-            int roll = randomNumGen();
-            if (roll <= 40)
-            {
-                return "COMMON DROP: A piece of lint. (Nothing happened)";
-            }
-            else if (roll <= 70)
-            {
-                currentHitpoints = updateHealthpoints(40, maxHitpoints, currentHitpoints);
-                return "UNCOMMON DROP: Minor Health Potion! Restored 40 HP.";
-            }
-            else if (roll <= 95)
-            {
-                return "RARE DROP: Shiny Armor! (Looks cool, does nothing)";
-            }
-            else
-            {
-                currentHitpoints = maxHitpoints;
-                return "LEGENDARY DROP: Divine Blessing! Fully restored HP!";
-            }
-        }
 };
 
 class heroMoveList: public moveLogic
 {
     public:
-        enum class moveset {ATTACK, HEAL, BLOCK, GIVEUP, LOOTBOX};
+        enum class moveset {ATTACK, HEAL, BLOCK, GIVEUP};
 
         int power;
         int accuracy;
@@ -165,13 +235,6 @@ class heroMoveList: public moveLogic
                         manaCost = 50;
                         moveParameters = {power, accuracy, criticalRate, manaCost};
                         return moveset::HEAL;
-                    case 'l':
-                        power = 0;
-                        accuracy = 100;
-                        criticalRate = 0;
-                        manaCost = 10;
-                        moveParameters = {power, accuracy, criticalRate, manaCost};
-                        return moveset::LOOTBOX;
                     case 'g':
                         return moveset::GIVEUP;
                     default:
@@ -209,11 +272,6 @@ class heroMoveList: public moveLogic
                     cout << "Healed for " << healing << " health" << endl;
                     cout << "Hero health is now " << currentHitpoints << " health" << endl;
                     return moveParameters.at(3);
-                case moveset::LOOTBOX:
-                    cout << "Opening a Surprise Mechanics Loot Box..." << endl;
-                    cout << rollLootBox(currentHitpoints, maxHitpoints) << endl;
-                    cout << "Hero health is now " << currentHitpoints << " health" << endl;
-                    return moveParameters.at(3);
                 case moveset::GIVEUP:
                     currentHitpoints = 0;
                     return 0;
@@ -233,10 +291,12 @@ class hero
         int heroLevel = 50;
         int maxHitpoints = 500;
         int damageTaken;
-        int currentHitpoints = 300; //lowered for heal command test
+        int currentHitpoints = 300; 
         int healingDone;
         int mana = 500;
         bool isDead = false;
+        
+        vector<Item> inventory; // Added for the new loot system
 
         void setHeroName(string newName)
         {
@@ -257,11 +317,20 @@ class hero
         
         void playerRegularAction()
         {
-            cout << "Choose from the following:\na to attack\nb to block\nh to heal\nl to open loot box\ng to give up (quit)" << endl;
+            cout << "Choose from the following:\na to attack\nb to block\nh to heal\ng to give up (quit)" << endl;
             heroMoveList::moveset action = heroMove.selectAction();
             int manaCost = heroMove.actionLogic(action, heroLevel, maxHitpoints, currentHitpoints);
             mana = heroMove.updateMana(mana, manaCost);
-            cout << "Hero mana is now " << mana << endl;
+        }
+
+        // 4. Hero receives items and adds to inventory
+        void receiveItems(const vector<Item>& items)
+        {
+            for (const Item& item : items) 
+            {
+                inventory.push_back(item);
+                cout << heroName << " received: " << item.name << "!" << endl;
+            }
         }
 };
 
@@ -300,17 +369,40 @@ class turnController
     public:
         void turnOrder(hero& hero, boss& boss)
         {
+            // Combat loop (Existing classes)
             while (hero.checkPlayerDeath() != true && boss.checkBossDeath() != true)
             {
-                //cout << "Player death check passed" << endl;
                 cout << hero.heroName << "'s turn" << endl;
                 hero.playerRegularAction();
-                //cout << "Boss death check passed" << endl;
                 if (hero.checkPlayerDeath() != true)
                 {
                     cout << "Enemy turn" << endl;
                     boss.bossRegularAction();
                 }        
+            }
+
+            // 4. Wire into boss defeat
+            // Boss defeated -> checkBossDeath() returns true
+            if (boss.checkBossDeath() == true) 
+            {
+                cout << "\nBoss Defeated!" << endl;
+                
+                LootBoxFactory boxFactory;
+                LootBox droppedBox = boxFactory.buildsBox(boss.bossLevel);
+                
+                cout << "You found a " << droppedBox.tierName << " loot box!" << endl;
+                
+                LootTable lootTable;
+                vector<Item> droppedItems;
+                
+                // Roll items based on the box's rollCount
+                for (int i = 0; i < droppedBox.rollCount; i++) 
+                {
+                    droppedItems.push_back(lootTable.rollItem());
+                }
+
+                // Hero receives items
+                hero.receiveItems(droppedItems);
             }
         }
 };
